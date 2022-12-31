@@ -2,6 +2,9 @@
 #include "obs-module.h"
 #include "version.h"
 
+#define LOG_OFFSET_DB 6.0f
+#define LOG_RANGE_DB 96.0f
+
 struct browser_transition {
 	obs_source_t *source;
 	obs_source_t *browser;
@@ -83,6 +86,21 @@ void browser_transition_update(void *data, obs_data_t *settings)
 	obs_source_set_monitoring_type(browser_transition->browser,
 				       obs_data_get_int(settings,
 							"audio_monitoring"));
+	float def =
+		(float)obs_data_get_double(settings, "audio_volume") / 100.0f;
+	float db;
+	if (def >= 1.0f)
+		db = 0.0f;
+	else if (def <= 0.0f)
+		db = -INFINITY;
+	else
+		db = -(LOG_RANGE_DB + LOG_OFFSET_DB) *
+			     powf((LOG_RANGE_DB + LOG_OFFSET_DB) /
+					  LOG_OFFSET_DB,
+				  -def) +
+		     LOG_OFFSET_DB;
+	const float mul = obs_db_to_mul(db);
+	obs_source_set_volume(browser_transition->browser, mul);
 	if (!obs_data_get_int(settings, "audio_fade_style")) {
 		browser_transition->mix_a = mix_a_fade_in_out;
 		browser_transition->mix_b = mix_b_fade_in_out;
@@ -173,6 +191,22 @@ static bool browser_transition_audio_render(void *data, uint64_t *ts_out,
 	return true;
 }
 
+bool browser_reroute_audio_changed(void *data, obs_properties_t *props,
+				   obs_property_t *property,
+				   obs_data_t *settings)
+{
+	UNUSED_PARAMETER(data);
+	UNUSED_PARAMETER(property);
+	obs_property_t *audio_monitoring =
+		obs_properties_get(props, "audio_monitoring");
+	obs_property_t *audio_volume =
+		obs_properties_get(props, "audio_volume");
+	const bool reroute_audio = obs_data_get_bool(settings, "reroute_audio");
+	obs_property_set_visible(audio_monitoring, reroute_audio);
+	obs_property_set_visible(audio_volume, reroute_audio);
+	return true;
+}
+
 obs_properties_t *browser_transition_properties(void *data)
 {
 	struct browser_transition *browser_transition = data;
@@ -181,16 +215,6 @@ obs_properties_t *browser_transition_properties(void *data)
 		props, "transition_point", obs_module_text("TransitionPoint"),
 		0, 100.0, 1.0);
 	obs_property_float_set_suffix(p, "%");
-	// audio output settings
-	obs_property_t *monitor_list = obs_properties_add_list(
-		props, "audio_monitoring", obs_module_text("AudioMonitoring"),
-		OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
-	obs_property_list_add_int(monitor_list, obs_module_text("None"),
-				  OBS_MONITORING_TYPE_NONE);
-	obs_property_list_add_int(monitor_list, obs_module_text("MonitorOnly"),
-				  OBS_MONITORING_TYPE_MONITOR_ONLY);
-	obs_property_list_add_int(monitor_list, obs_module_text("Both"),
-				  OBS_MONITORING_TYPE_MONITOR_AND_OUTPUT);
 
 	// audio fade settings
 	obs_property_t *audio_fade_style = obs_properties_add_list(
@@ -205,15 +229,44 @@ obs_properties_t *browser_transition_properties(void *data)
 		obs_source_properties(browser_transition->browser);
 	obs_properties_remove_by_name(bp, "width");
 	obs_properties_remove_by_name(bp, "height");
+	obs_properties_remove_by_name(bp, "refreshnocache");
+
+	// audio output settings
+	p = obs_properties_add_float_slider(bp, "audio_volume",
+					    obs_module_text("Audio Volume"), 0,
+					    100.0, 1.0);
+	obs_property_float_set_suffix(p, "%");
+	obs_property_t *monitor_list = obs_properties_add_list(
+		bp, "audio_monitoring", obs_module_text("AudioMonitoring"),
+		OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
+	obs_property_list_add_int(monitor_list, obs_module_text("None"),
+				  OBS_MONITORING_TYPE_NONE);
+	obs_property_list_add_int(monitor_list, obs_module_text("MonitorOnly"),
+				  OBS_MONITORING_TYPE_MONITOR_ONLY);
+	obs_property_list_add_int(monitor_list, obs_module_text("Both"),
+				  OBS_MONITORING_TYPE_MONITOR_AND_OUTPUT);
+
 	obs_properties_add_group(props, "browser_group",
 				 obs_module_text("Browser"), OBS_GROUP_NORMAL,
 				 bp);
+
+	p = obs_properties_get(bp, "reroute_audio");
+	if (p) {
+		obs_property_set_modified_callback2(
+			p, browser_reroute_audio_changed, data);
+	}
+	obs_properties_add_text(
+		props, "plugin_info",
+		"<a href=\"https://obsproject.com/forum/resources/browser-transition.1653/\">Browser Transition</a> (" PROJECT_VERSION
+		") by <a href=\"https://www.exeldro.com\">Exeldro</a>",
+		OBS_TEXT_INFO);
 	return props;
 }
 
 void browser_transition_defaults(obs_data_t *settings)
 {
 	obs_data_set_default_double(settings, "transition_point", 50.0);
+	obs_data_set_default_double(settings, "audio_volume", 100.0);
 	obs_data_t *d = obs_get_source_defaults("browser_source");
 	obs_data_item_t *i = obs_data_first(d);
 	while (i) {
