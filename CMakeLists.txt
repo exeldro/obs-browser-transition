@@ -6,7 +6,7 @@ else()
   cmake_minimum_required(VERSION 3.18)
 endif()
 
-project(browser-transition VERSION 0.1.0)
+project(browser-transition VERSION 0.1.1)
 set(PROJECT_FULL_NAME "Browser Transition")
 
 # Set new UUIDs when you start to create a new plugin.
