@@ -749,16 +749,44 @@ void browser_transition_start(void *data)
 		obs_source_add_active_child(browser_transition->source,
 					    browser_transition->browser);
 	}
+	proc_handler_t *ph =
+		obs_source_get_proc_handler(browser_transition->browser);
+	if (!ph)
+		return;
+	obs_data_t *json = obs_data_create();
+	obs_data_set_string(json, "transition",
+			    obs_source_get_name(browser_transition->source));
+	obs_data_set_bool(json, "trackMatte",
+			  browser_transition->track_matte_enabled);
+	obs_data_set_double(json, "duration", browser_transition->duration);
+	obs_data_set_double(json, "transitionPoint",
+			    browser_transition->transition_point);
+	struct calldata cd = {0};
+	calldata_set_string(&cd, "eventName", "transitionStart");
+	calldata_set_string(&cd, "jsonString", obs_data_get_json(json));
+	proc_handler_call(ph, "javascript_event", &cd);
+	calldata_free(&cd);
+	obs_data_release(json);
 }
 
 void browser_transition_stop(void *data)
 {
 	struct browser_transition *browser_transition = data;
-	if (browser_transition->browser && browser_transition->transitioning) {
+	if (!browser_transition->browser)
+		return;
+	if (browser_transition->transitioning) {
 		browser_transition->transitioning = false;
 		obs_source_remove_active_child(browser_transition->source,
 					       browser_transition->browser);
 	}
+	proc_handler_t *ph =
+		obs_source_get_proc_handler(browser_transition->browser);
+	if (!ph)
+		return;
+	struct calldata cd = {0};
+	calldata_set_string(&cd, "eventName", "transitionStop");
+	proc_handler_call(ph, "javascript_event", &cd);
+	calldata_free(&cd);
 }
 
 static void browser_transition_enum_active_sources(
