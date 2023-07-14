@@ -397,9 +397,16 @@ void browser_transition_video_render(void *data, gs_effect_t *effect)
 					? OBS_TRANSITION_SOURCE_B
 					: OBS_TRANSITION_SOURCE_A);
 		}
-		if (browser_transition->matte_layout == MATTE_LAYOUT_MASK)
+		if (t <= 0.0f || t >= 1.0f) {
+			if (browser_transition->transitioning) {
+				browser_transition->transitioning = false;
+				obs_source_remove_active_child(
+					browser_transition->source,
+					browser_transition->browser);
+			}
 			return;
-		if (t <= 0.0f || t >= 1.0f)
+		}
+		if (browser_transition->matte_layout == MATTE_LAYOUT_MASK)
 			return;
 	} else {
 
@@ -410,8 +417,15 @@ void browser_transition_video_render(void *data, gs_effect_t *effect)
 			      : OBS_TRANSITION_SOURCE_B;
 
 		if (!obs_transition_video_render_direct(
-			    browser_transition->source, target))
+			    browser_transition->source, target)) {
+			if (browser_transition->transitioning) {
+				browser_transition->transitioning = false;
+				obs_source_remove_active_child(
+					browser_transition->source,
+					browser_transition->browser);
+			}
 			return;
+		}
 	}
 
 	/* --------------------- */
