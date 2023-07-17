@@ -42,6 +42,7 @@ struct browser_transition {
 static void *browser_transition_create(obs_data_t *settings,
 				       obs_source_t *source)
 {
+	UNUSED_PARAMETER(settings);
 	struct browser_transition *bt =
 		bzalloc(sizeof(struct browser_transition));
 	bt->source = source;
@@ -72,7 +73,7 @@ static void *browser_transition_create(obs_data_t *settings,
 		gs_effect_get_param_by_name(bt->matte_effect, "invert_matte");
 
 	obs_transition_enable_fixed(bt->source, true, 0);
-	obs_source_update(source, settings);
+	obs_source_update(source, NULL);
 	return bt;
 }
 
@@ -208,6 +209,25 @@ void browser_transition_update(void *data, obs_data_t *settings)
 		browser_transition->mix_b = mix_b_cross_fade;
 	}
 	obs_source_update(browser_transition->browser, settings);
+
+	obs_data_t *s = obs_source_get_settings(browser_transition->browser);
+	if (s) {
+		uint32_t cx = obs_source_get_width(browser_transition->source);
+		uint32_t cy = obs_source_get_height(browser_transition->source);
+		if (browser_transition->track_matte_enabled) {
+			cx *= (uint32_t)browser_transition->matte_width_factor;
+			cy *= (uint32_t)browser_transition->matte_height_factor;
+		}
+
+		const uint32_t x = (uint32_t)obs_data_get_int(s, "width");
+		const uint32_t y = (uint32_t)obs_data_get_int(s, "height");
+		if (cx != x || cy != y) {
+			obs_data_set_int(s, "width", cx);
+			obs_data_set_int(s, "height", cy);
+			obs_source_update(browser_transition->browser, NULL);
+		}
+		obs_data_release(s);
+	}
 
 	if (browser_transition->track_matte_enabled !=
 	    track_matte_was_enabled) {
