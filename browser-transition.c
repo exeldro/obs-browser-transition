@@ -754,6 +754,35 @@ void browser_transition_start(void *data)
 
 	uint32_t cx = obs_source_get_width(browser_transition->source);
 	uint32_t cy = obs_source_get_height(browser_transition->source);
+	if (!cx || !cy) {
+		obs_source_t *s = obs_transition_get_active_source(
+			browser_transition->source);
+		if (s) {
+			cx = obs_source_get_width(s);
+			cy = obs_source_get_height(s);
+			obs_source_release(s);
+		}
+	}
+	if (!cx || !cy) {
+		obs_source_t *s = obs_transition_get_source(
+			browser_transition->source, OBS_TRANSITION_SOURCE_A);
+		if (s) {
+
+			cx = obs_source_get_width(s);
+			cy = obs_source_get_height(s);
+			obs_source_release(s);
+		}
+	}
+	if (!cx || !cy) {
+		obs_source_t *s = obs_transition_get_source(
+			browser_transition->source, OBS_TRANSITION_SOURCE_B);
+		if (s) {
+
+			cx = obs_source_get_width(s);
+			cy = obs_source_get_height(s);
+			obs_source_release(s);
+		}
+	}
 	if (!cx || !cy)
 		return;
 	obs_data_t *s = obs_source_get_settings(browser_transition->browser);
