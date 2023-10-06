@@ -603,6 +603,8 @@ static bool track_matte_enabled_modified(obs_properties_t *ppts,
 static bool refresh_browser_source(obs_properties_t *props,
 				   obs_property_t *property, void *data)
 {
+	UNUSED_PARAMETER(props);
+	UNUSED_PARAMETER(property);
 	obs_source_t *browser = data;
 	if (!browser)
 		return false;
