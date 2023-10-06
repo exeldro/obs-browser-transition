@@ -600,6 +600,23 @@ static bool track_matte_enabled_modified(obs_properties_t *ppts,
 	return true;
 }
 
+static bool refresh_browser_source(obs_properties_t *props,
+				   obs_property_t *property, void *data)
+{
+	obs_source_t *browser = data;
+	if (!browser)
+		return false;
+	obs_properties_t *browser_props = obs_source_properties(browser);
+	if (!browser_props)
+		return false;
+	obs_property_t *refresh =
+		obs_properties_get(browser_props, "refreshnocache");
+	bool result =
+		obs_property_button_clicked(refresh, data);
+	obs_properties_destroy(browser_props);
+	return result;
+}
+
 obs_properties_t *browser_transition_properties(void *data)
 {
 	struct browser_transition *browser_transition = data;
@@ -667,6 +684,10 @@ obs_properties_t *browser_transition_properties(void *data)
 	obs_properties_remove_by_name(bp, "width");
 	obs_properties_remove_by_name(bp, "height");
 	obs_properties_remove_by_name(bp, "refreshnocache");
+	obs_properties_add_button2(bp, "refreshnocache",
+				   obs_module_text("RefreshNoCache"),
+				   refresh_browser_source,
+				   browser_transition->browser);
 
 	// audio output settings
 	p = obs_properties_add_float_slider(bp, "audio_volume",
