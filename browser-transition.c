@@ -221,7 +221,7 @@ void browser_transition_update(void *data, obs_data_t *settings)
 
 		const uint32_t x = (uint32_t)obs_data_get_int(s, "width");
 		const uint32_t y = (uint32_t)obs_data_get_int(s, "height");
-		if (cx != x || cy != y) {
+		if (cx && cy && (cx != x || cy != y)) {
 			obs_data_set_int(s, "width", cx);
 			obs_data_set_int(s, "height", cy);
 			obs_source_update(browser_transition->browser, NULL);
