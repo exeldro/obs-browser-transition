@@ -613,8 +613,7 @@ static bool refresh_browser_source(obs_properties_t *props,
 		return false;
 	obs_property_t *refresh =
 		obs_properties_get(browser_props, "refreshnocache");
-	bool result =
-		obs_property_button_clicked(refresh, data);
+	bool result = obs_property_button_clicked(refresh, data);
 	obs_properties_destroy(browser_props);
 	return result;
 }
@@ -914,6 +913,20 @@ browser_transition_get_color_space(void *data, size_t count,
 	return obs_transition_video_get_color_space(s->source);
 }
 
+static void browser_transition_show(void *data)
+{
+	struct browser_transition *s = data;
+	if (s->browser)
+		obs_source_inc_showing(s->browser);
+}
+
+static void browser_transition_hide(void *data)
+{
+	struct browser_transition *s = data;
+	if (s->browser)
+		obs_source_dec_showing(s->browser);
+}
+
 struct obs_source_info browser_transition_info = {
 	.id = "browser_transition",
 	.type = OBS_SOURCE_TYPE_TRANSITION,
@@ -932,6 +945,8 @@ struct obs_source_info browser_transition_info = {
 	.load = browser_transition_update,
 	.video_tick = browser_transition_tick,
 	.video_get_color_space = browser_transition_get_color_space,
+	.show = browser_transition_show,
+	.hide = browser_transition_hide,
 };
 
 OBS_DECLARE_MODULE()
